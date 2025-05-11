@@ -1,9 +1,15 @@
 package mock.responses;
 
+import com.google.gson.Gson;
+import mock.dto.Student;
 import spark.Request;
 import spark.Response;
 
+import java.util.*;
+
 public class Jsons {
+
+    private static final Set<Student> students = new HashSet<>();
 
     public static String getExampleJsonResponse(Request req, Response res) {
         res.type("application/json");
@@ -59,5 +65,38 @@ public class Jsons {
                        ]
                     }
                  }""";
+    }
+
+    public static String addNewStudent(Request request, Response response) {
+
+        Gson gson = new Gson();
+
+        int id = students.stream()
+                .max(Comparator.comparing(Student::getId))
+                .map(Student::getId)
+                .orElse(0) + 1;
+
+        request.attribute("id", id);
+        Student newStudent = gson.fromJson(request.body(), Student.class);
+        newStudent.setId(id);
+
+        students.add(newStudent);
+
+        response.status(201);
+        response.type("application/json");
+
+        return gson.toJson(newStudent);
+    }
+
+    public static String getStudents(Request req, Response response) {
+        response.type("application/json");
+        Gson gson = new Gson();
+        String lastName = req.queryParams("lastName");
+
+        return gson.toJson(students
+                .stream()
+                .filter(s-> Objects.isNull(lastName) || s.getLastName().equals(lastName))
+                .toList()
+        );
     }
 }

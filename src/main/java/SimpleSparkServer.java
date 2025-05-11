@@ -6,32 +6,30 @@ import static spark.Spark.*;
 
 public class SimpleSparkServer {
 
-
     public static void main(String[] args) {
         port(4567);
 
         // jwt token auth
-        get("/secure", Auth::getExampleTokenAuthResponse);
-
         //basic login/password
-        get("/secure-basic", Auth::getExampleSecureBasicResponse);
-
         //oauth2 authorization token
+
+        get("/secure", Auth::getExampleTokenAuthResponse);
+        get("/secure-basic", Auth::getExampleSecureBasicResponse);
         post("/token", Auth::getOauthTokenResponse);
         get("/secure-oauth", Auth::getExampleSecureAuthResponse);
 
-        get("/hello-xml",  Xmls::getExampleXmlResponse);
-        get("/hello-xml-shopping",  Xmls::getExampleXmlShoppingResponse);
-
-
-        get("/json-example",  Jsons::getExampleJsonResponse);
-        get("/json-example-shop",  Jsons::getExampleJsonStoreResponse);
-
-        get("/json-annonymous",  "application/json", (request, response) -> {
+        //json-paths
+        get("/hello-xml", Xmls::getExampleXmlResponse);
+        get("/hello-xml-shopping", Xmls::getExampleXmlShoppingResponse);
+        get("/json-example", Jsons::getExampleJsonResponse);
+        get("/json-example-shop", Jsons::getExampleJsonStoreResponse);
+        get("/json-annonymous", "application/json", (request, response) -> {
             response.type("application/json");
             return "[1, 2, 3]";
         });
 
-
+        //posting
+        post("student-post-example", Jsons::addNewStudent);
+        get("get-students", Jsons::getStudents);
     }
 }

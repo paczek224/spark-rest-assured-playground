@@ -4,6 +4,7 @@ import io.restassured.RestAssured;
 import io.restassured.config.JsonConfig;
 import io.restassured.config.RestAssuredConfig;
 import io.restassured.filter.log.ErrorLoggingFilter;
+import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.path.json.config.JsonPathConfig;
 import io.restassured.response.Response;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -26,7 +28,7 @@ public class JsonTest {
 
         RestAssured.port = 4567;
         RestAssured.filters(
-                new ErrorLoggingFilter(),
+                new RequestLoggingFilter(),
                 new ResponseLoggingFilter(io.restassured.filter.log.LogDetail.ALL, System.out)
         );
     }
@@ -68,5 +70,65 @@ public class JsonTest {
                 .body("store.book.findAll  { it.price > 10 }.title.sort().reverse()", is(List.of("The Lord of the Rings", "Sword of Honour")));
     }
 
+    @Test
+    public void shouldBeAbleToPostNewStudent() {
+
+        final String firstName = "firstName";
+        final String lastName = "lastName";
+
+        int numberOfStudentsIdsBeforeCreation = given()
+                .get("/get-students")
+                .then()
+                .extract()
+                .jsonPath()
+                .getList("id", Long.class)
+                .size();
+
+        final String firstStudentName = "Lukasz";
+        final String firstStudentLastName = "Paczek";
+        final int firstStudentId = given()
+                .body(Map.of(firstName, firstStudentName, lastName, firstStudentLastName))
+                .when()
+                .post("/student-post-example")
+                .then()
+                .body(firstName, equalTo(firstStudentName))
+                .body(lastName, equalTo(firstStudentLastName))
+                .body("id", notNullValue())
+                .extract()
+                .jsonPath().getInt("id");
+
+        final String secondStudentName = "Jan";
+        final String secondStudentLastName = "Kowalski";
+        final int secondStudentId = firstStudentId + 1;
+        given()
+                .body(Map.of(firstName, secondStudentName, lastName, secondStudentLastName))
+                .when()
+                .post("/student-post-example")
+                .then()
+                .body(firstName, equalTo(secondStudentName))
+                .body(lastName, equalTo(secondStudentLastName))
+                .body("id", is(secondStudentId));
+
+
+        ValidatableResponse then = given()
+                .get("/get-students")
+                .then();
+
+        then.body("", hasItems(
+                        allOf(hasEntry(firstName, firstStudentName), hasEntry(lastName, firstStudentLastName)),
+                        allOf(hasEntry(firstName, secondStudentName), hasEntry(lastName, secondStudentLastName))
+        ));
+
+        final String GROOVY_FORMAT = "findAll {it.firstName == '%s' && it.lastName == '%s' && it.id == %s}";
+        then.body(String.format(GROOVY_FORMAT, firstStudentName, firstStudentLastName, firstStudentId), not(empty()));
+        then.body(String.format(GROOVY_FORMAT, secondStudentName, secondStudentLastName, secondStudentId), not(empty()));
+        then.body("count {it}", equalTo(numberOfStudentsIdsBeforeCreation + 2));
+
+        given()
+                .queryParams(lastName, firstStudentLastName)
+                .get("/get-students")
+                .then()
+                .body("id", is(List.of(firstStudentId)));
+    }
 
 }
