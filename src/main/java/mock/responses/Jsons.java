@@ -5,7 +5,14 @@ import mock.dto.Student;
 import spark.Request;
 import spark.Response;
 
-import java.util.*;
+import javax.servlet.MultipartConfigElement;
+import javax.servlet.ServletException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 
 public class Jsons {
 
@@ -68,24 +75,12 @@ public class Jsons {
     }
 
     public static String addNewStudent(Request request, Response response) {
+        String student = createStudent(request.body());
 
-        Gson gson = new Gson();
-
-        int id = students.stream()
-                .max(Comparator.comparing(Student::getId))
-                .map(Student::getId)
-                .orElse(0) + 1;
-
-        request.attribute("id", id);
-        Student newStudent = gson.fromJson(request.body(), Student.class);
-        newStudent.setId(id);
-
-        students.add(newStudent);
-
-        response.status(201);
         response.type("application/json");
+        response.status(201);
 
-        return gson.toJson(newStudent);
+        return student;
     }
 
     public static String getStudents(Request req, Response response) {
@@ -95,8 +90,41 @@ public class Jsons {
 
         return gson.toJson(students
                 .stream()
-                .filter(s-> Objects.isNull(lastName) || s.getLastName().equals(lastName))
+                .filter(s -> Objects.isNull(lastName) || s.getLastName().equals(lastName))
                 .toList()
         );
+    }
+
+    public static String uploadStudent(Request req, Response response) throws ServletException, IOException {
+
+        req.attribute("org.eclipse.jetty.multipartConfig", new MultipartConfigElement("/tmp"));
+
+        try (InputStream is = req.raw().getPart("file").getInputStream()) {
+
+            String student = createStudent(new String(is.readAllBytes()));
+
+            response.type("application/json");
+            response.status(201);
+
+            return student;
+        }
+    }
+
+    private static String createStudent(String content) {
+        Gson gson = new Gson();
+
+        int id = getNewStudentId();
+        Student newStudent = gson.fromJson(content, Student.class);
+        newStudent.setId(id);
+        students.add(newStudent);
+
+        return gson.toJson(newStudent);
+    }
+
+    private static int getNewStudentId() {
+        return students.stream()
+                .max(Comparator.comparing(Student::getId))
+                .map(Student::getId)
+                .orElse(0) + 1;
     }
 }

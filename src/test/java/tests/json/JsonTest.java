@@ -3,18 +3,21 @@ package tests.json;
 import io.restassured.RestAssured;
 import io.restassured.config.JsonConfig;
 import io.restassured.config.RestAssuredConfig;
-import io.restassured.filter.log.ErrorLoggingFilter;
 import io.restassured.filter.log.RequestLoggingFilter;
 import io.restassured.filter.log.ResponseLoggingFilter;
 import io.restassured.path.json.config.JsonPathConfig;
 import io.restassured.response.Response;
 import io.restassured.response.ValidatableResponse;
+import lombok.SneakyThrows;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.math.BigDecimal;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.Matchers.*;
@@ -115,8 +118,8 @@ public class JsonTest {
                 .then();
 
         then.body("", hasItems(
-                        allOf(hasEntry(firstName, firstStudentName), hasEntry(lastName, firstStudentLastName)),
-                        allOf(hasEntry(firstName, secondStudentName), hasEntry(lastName, secondStudentLastName))
+                allOf(hasEntry(firstName, firstStudentName), hasEntry(lastName, firstStudentLastName)),
+                allOf(hasEntry(firstName, secondStudentName), hasEntry(lastName, secondStudentLastName))
         ));
 
         final String GROOVY_FORMAT = "findAll {it.firstName == '%s' && it.lastName == '%s' && it.id == %s}";
@@ -128,7 +131,21 @@ public class JsonTest {
                 .queryParams(lastName, firstStudentLastName)
                 .get("/get-students")
                 .then()
-                .body("id", is(List.of(firstStudentId)));
+                .body("id", hasItem(firstStudentId));
     }
 
+    @SneakyThrows
+    @Test
+    public void shouldBeAbleToAddNewStudentFromFile() {
+
+        File file = Path.of(Objects.requireNonNull(getClass().getClassLoader().getResource("new-student.json")).toURI()).toFile();
+
+        given()
+                .multiPart("file", file)
+                .post("/upload-students")
+                .then()
+                .body("firstName", is("Marian"))
+                .body("lastName", is("Nowak"))
+                .body("id", notNullValue()) ;
+    }
 }

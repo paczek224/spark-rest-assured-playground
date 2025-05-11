@@ -28,8 +28,11 @@ public class SimpleSparkServer {
             return "[1, 2, 3]";
         });
 
-        //posting
+        //posting-students
         post("student-post-example", Jsons::addNewStudent);
+        post("upload-students", Jsons::uploadStudent);
+        //get-students
         get("get-students", Jsons::getStudents);
+
     }
 }
